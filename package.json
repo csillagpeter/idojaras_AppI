@@ -1,0 +1,36 @@
+{
+  "name": "idojaras_appi",
+  "version": "1.0.0",
+  "description": "backend idojaras app ",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/csillagpeter/idojaras_AppI.git"
+  },
+  "keywords": [
+    "Node"
+  ],
+  "author": "NSZ",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/csillagpeter/idojaras_AppI/issues"
+  },
+  "homepage": "https://github.com/csillagpeter/idojaras_AppI#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1",
+    "mongoose": "^9.11.1",
+    "mysql": "^2.18.1",
+    "mysql2": "^3.24.5",
+    "sha1": "^1.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
