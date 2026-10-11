@@ -39,7 +39,7 @@ app.listen(port, () => {
 
 
 // registration endpoint
-app.post('/register', (req, res) => {
+app.post('/users/register', (req, res) => {
     const { name, email, password, confirm } = req.body;
     if(!name || !email || !password || !confirm) 
         {
@@ -78,7 +78,7 @@ app.post('/register', (req, res) => {
 
 });
 // login endpoint
-app.post('/login', (req, res) => 
+app.post('/users/login', (req, res) => 
     {
         const { email, password } = req.body;
         if(!email || !password)
@@ -123,6 +123,140 @@ app.post('/login', (req, res) =>
                 });
         });
     });
+//-----------------------------------------------------------------------------------------------------------
+// PAASSWORD CHANGE ENDPOINT
+app.post('/users/:uid/passmod', (req, res) => 
+    {
+        const{ oldPassword, newPassword, confirmPassword } = req.body;
+        const uid = req.params.uid;
 
+        if(!oldPassword || !newPassword || !confirmPassword)
+            {
+                return res.status(400).json({ message: 'Minden mező kitöltése kötelező!' });
+            }
+        if(newPassword !== confirmPassword)
+            {
+                return res.status(400).json({ message: 'Az új jelszavak nem egyeznek!' });
+            }
+        const olpassHash = sha1(oldPassword);
+        pool.query('SELECT * FROM users WHERE ID = ? ', [(sha1(oldPassword)),uid], (error, results) => 
+            {
+                if(error)
+                    {
+                        return res.status(500).json({ message: 'Hiba történt az adatbázis lekérdezés során!' });
+                    }
+                    return res.status(200).json({ message: 'Sikeres jelszó módosítás!' });
+            })
+    })
+
+// get profile endpoint
+app.get('/users/:uid', (req, res) => 
+    {
+        const uid = req.params.uid;
+        pool.query('SELECT * FROM users WHERE ID = ?', [uid], (error, results) => {
+            if(error) {
+                return res.status(500).json({ message: 'Hiba történt az adatbázis lekérdezés során!' });
+            }
+            if(results.length == 0) {
+                return res.status(404).json({ message: 'A felhasználó nem található!' });
+            }
+           
+            
+            let user={
+                "name": results[0].name,
+                "email": results[0].email,
+                "role": results[0].role,
+                "created_at": results[0].created_at
+
+            }
+
+
+            return res.status(200).json({ result: user });
+        });
+    })
+
+// update profile endpoint
+app.put('/users/:uid', (req, res) => 
+    {
+        const uid = req.params.uid;
+        const { username, email ,luid } = req.body;
+
+
+        if(!username || !email || !luid)
+            {
+                return res.status(400).json({ message: 'Minden mező kitöltése kötelező!' });
+            }
+        if(luid != uid)
+            {
+                return res.status(400).json({ message: 'Hibás felhasználói azonosító!' });
+            }
+        pool.query('SELECT * FROM users WHERE ID = ?', [uid], (error, results) =>
+            {
+                if(error)
+                    {
+                        return res.status(500).json({ message: 'Hiba történt az adatbázis lekérdezés során!' });
+
+                    }
+                if(results.length == 0)
+                    {
+                        return res.status(404).json({ message: 'A felhasználó nem található!' });
+                    }
+                if((username === results[0].name) && (email === results[0].email))
+                    {
+                        return res.status(400).json({ message: 'Nincs módosítás!' });
+                    }
+                
+
+
+            })
+
+            pool.query('SELECT * FROM users WHERE email = ? AND ID<>?', [email, uid], (error, results) =>
+            {
+                if(error)
+                    {
+                        return res.status(500).json({ message: 'Hiba történt az adatbázis lekérdezés során!' });
+                    }
+                if(results.length > 0)
+                    {
+                        return res.status(400).json({ message: 'Az email cím már használatban van!' });
+                    }
+            })
+            pool.query('UPDATE users SET name = ?, email = ? WHERE ID = ?', [username, email, uid], (error, results) =>
+            {
+                if(error)
+                    {
+                        return res.status(500).json({ message: 'Hiba történt az adatbázis frissítés során!' });
+                    }
+                return res.status(200).json({ message: 'Sikeres profil frissítés!' });
+            } )
+        })
+
+// delete profile endpoint
+app.delete('/users/:uid', (req, res) => 
+    {   
+        const uid = req.params.uid;
+        const loggedUserId = req.body.luid;
+        if(!uid || !loggedUserId)
+        {
+            return res.status(400).json({ message: 'Minden mező kitöltése kötelező!' });
+        }
+        if(uid != loggedUserId)
+        {
+            return res.status(403).json({ message: 'Nem rendelkezik a megfelelő jogosultságokkal!' });
+        }
+        pool.query('DELETE FROM users WHERE ID = ?', [uid], (error, results) =>
+            {
+                if(error)
+                    {
+                        return res.status(500).json({ message: 'Hiba történt az adatbázis törlés során!' });
+                    }
+                if(results.affectedRows == 1)
+                    {
+                        return res.status(200).json({ message: 'Sikeres profil törlés!' });
+                    }
+                return res.status(404).json({ message: 'A felhasználó nem található!' });
+            })
+
+    })
 
     
