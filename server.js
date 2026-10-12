@@ -121,7 +121,7 @@ app.post('/users/login', (req, res) =>
                         }
                     return res.status(200).json({ message: 'Sikeres bejelentkezés!', user: loggedUser });
                 });
-        });
+        }); 
     });
 //-----------------------------------------------------------------------------------------------------------
 // PAASSWORD CHANGE ENDPOINT
@@ -166,7 +166,7 @@ app.get('/users/:uid', (req, res) =>
                 "name": results[0].name,
                 "email": results[0].email,
                 "role": results[0].role,
-                "created_at": results[0].created_at
+                "loginCount": results[0].loginCount
 
             }
 
