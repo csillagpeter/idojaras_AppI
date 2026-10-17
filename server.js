@@ -40,12 +40,12 @@ app.listen(port, () => {
 
 // registration endpoint
 app.post('/users/register', (req, res) => {
-    const { name, email, password, confirm } = req.body;
-    if(!name || !email || !password || !confirm) 
+    const { name, email, passwd, confirm } = req.body;
+    if(!name || !email || !passwd || !confirm) 
         {
             return res.status(400).json({ message: 'Minden mező kitöltése kötelező!' });
         }
-    if(password !== confirm)
+    if(passwd !== confirm)
         {
             return res.status(400).json({ message: 'A jelszavak nem egyeznek!' });
         }
@@ -65,7 +65,7 @@ app.post('/users/register', (req, res) => {
                     return res.status(400).json({ message: 'Az email cím már regisztrálva van!' });
                 }
             
-            pool.query('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', [name, email, sha1(password)], (error, results) => 
+            pool.query('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', [name, email, sha1(passwd)], (error, results) => 
                 {
                     if(error)
                         {
@@ -127,19 +127,19 @@ app.post('/users/login', (req, res) =>
 // PAASSWORD CHANGE ENDPOINT
 app.post('/users/:uid/passmod', (req, res) => 
     {
-        const{ oldPassword, newPassword, confirmPassword } = req.body;
+        const{ newpass, oldpass, confirm } = req.body;
         const uid = req.params.uid;
 
-        if(!oldPassword || !newPassword || !confirmPassword)
+        if(!oldpass || !newpass || !confirm)
             {
                 return res.status(400).json({ message: 'Minden mező kitöltése kötelező!' });
             }
-        if(newPassword !== confirmPassword)
+        if(newpass !== confirm)
             {
                 return res.status(400).json({ message: 'Az új jelszavak nem egyeznek!' });
             }
-        const olpassHash = sha1(oldPassword);
-        pool.query('SELECT * FROM users WHERE ID = ? ', [(sha1(oldPassword)),uid], (error, results) => 
+        const oldpassHash = sha1(oldpass);
+        pool.query('SELECT * FROM users WHERE ID = ? ', [(sha1(oldpass)),uid], (error, results) => 
             {
                 if(error)
                     {
@@ -176,60 +176,49 @@ app.get('/users/:uid', (req, res) =>
     })
 
 // update profile endpoint
-app.put('/users/:uid', (req, res) => 
-    {
-        const uid = req.params.uid;
-        const { username, email ,luid } = req.body;
+app.patch('/users/:uid', (req, res) => {
+    const uid = req.params.uid;
+    const { username, email, luid } = req.body;
 
+    if (!username || !email || !luid) {
+        return res.status(400).json({ message: 'Minden mező kitöltése kötelező!' });
+    }
+    if (luid != uid) {
+        return res.status(400).json({ message: 'Hibás felhasználói azonosító!' });
+    }
 
-        if(!username || !email || !luid)
-            {
-                return res.status(400).json({ message: 'Minden mező kitöltése kötelező!' });
+    // 1. Ellenőrizzük, létezik-e a felhasználó
+    pool.query('SELECT * FROM users WHERE ID = ?', [uid], (error, results) => {
+        if (error) {
+            return res.status(500).json({ message: 'Hiba történt az adatbázis lekérdezés során!' });
+        }
+        if (results.length == 0) {
+            return res.status(404).json({ message: 'A felhasználó nem található!' });
+        }
+        if (username === results[0].name && email === results[0].email) {
+            return res.status(400).json({ message: 'Nincs módosítás!' });
+        }
+
+        // 2. HA létezik, ellenőrizzük az email egyediségét (CSAK az előző callback-en BELÜL)
+        pool.query('SELECT * FROM users WHERE email = ? AND ID <> ?', [email, uid], (error, emailResults) => {
+            if (error) {
+                return res.status(500).json({ message: 'Hiba történt az adatbázis lekérdezés során!' });
             }
-        if(luid != uid)
-            {
-                return res.status(400).json({ message: 'Hibás felhasználói azonosító!' });
+            if (emailResults.length > 0) {
+                return res.status(400).json({ message: 'Az email cím már használatban van!' });
             }
-        pool.query('SELECT * FROM users WHERE ID = ?', [uid], (error, results) =>
-            {
-                if(error)
-                    {
-                        return res.status(500).json({ message: 'Hiba történt az adatbázis lekérdezés során!' });
 
-                    }
-                if(results.length == 0)
-                    {
-                        return res.status(404).json({ message: 'A felhasználó nem található!' });
-                    }
-                if((username === results[0].name) && (email === results[0].email))
-                    {
-                        return res.status(400).json({ message: 'Nincs módosítás!' });
-                    }
-                
-
-
-            })
-
-            pool.query('SELECT * FROM users WHERE email = ? AND ID<>?', [email, uid], (error, results) =>
-            {
-                if(error)
-                    {
-                        return res.status(500).json({ message: 'Hiba történt az adatbázis lekérdezés során!' });
-                    }
-                if(results.length > 0)
-                    {
-                        return res.status(400).json({ message: 'Az email cím már használatban van!' });
-                    }
-            })
-            pool.query('UPDATE users SET name = ?, email = ? WHERE ID = ?', [username, email, uid], (error, results) =>
-            {
-                if(error)
-                    {
-                        return res.status(500).json({ message: 'Hiba történt az adatbázis frissítés során!' });
-                    }
+            // 3. HA minden rendben, CSAK AKKOR frissítünk
+            pool.query('UPDATE users SET name = ?, email = ? WHERE ID = ?', [username, email, uid], (error, updateResults) => {
+                if (error) {
+                    return res.status(500).json({ message: 'Hiba történt az adatbázis frissítés során!' });
+                }
                 return res.status(200).json({ message: 'Sikeres profil frissítés!' });
-            } )
-        })
+            });
+        });
+    });
+});
+
 
 // delete profile endpoint
 app.delete('/users/:uid', (req, res) => 
